@@ -10,7 +10,7 @@ This class has two generic types associated with it that represents failure and 
 
 The `Either` type has two static methods associated with it that can be used to create Either values.
 ```csharp
-public static Either<T, U> Return(U value)
+public static Either<T, U> Succeed(U value)
 ```
 which represents a successful evaluation and
 ```csharp
@@ -41,7 +41,7 @@ public static Either<string, double> Invert(double x)
             .Fail("Error: divide by zero");
     }
     return Either<string, double>
-        .Return(1 / x);
+        .Succeed(1 / x);
 }
 ```
 
@@ -52,20 +52,20 @@ Now what happens when we try to use this method?
 ```csharp
 Either<string, double> successOrFailure = Invert(4);
 ```
-We need a way of extracting the values back out of the Either type so that we can do something useful with it. But at this point we don't know if the method succeeded or failed. What we want is some way of getting the values out of the Either type.
+We need a way of extracting the values back out of the Either type so that we can do something useful with it. But at this point we don't know if the method succeeded or failed. How would such a method look?
 ```csharp
-var result = successOrFailre.Get();
+var result = successOrFailure.Extract();
 ```
 But what will `var` be in this case? We don't know what the data type of the content is. What we need is a way for us to transform the contents to some type regardless of what the content is. To do that we need to specify how we handle the two possible states, failure or success.
 ```csharp
-public V Get<V>(Func<T, V> f, Func<U, V> g);
+public V Extract<V>(Func<T, V> f, Func<U, V> g);
 ```
 Here the first function, `f`, will transform the error state to some data type `V` and second function, `g`, will transform the success state to the same data type `V`. By supplying both of these functions we've specified what should happen regardless of what the internal state of the `Either` variable is in.
 
 Now for the example we were using it would look like this:
 ```csharp
 Either<string, double> successOrFailure = Invert(4);
-string output = successOrFailure.Get(
+string output = successOrFailure.Extract(
     errorMessage => errorMessage,
     inverted => "The inverse is: " + inverted.ToString()
 );
@@ -81,16 +81,16 @@ But wait, there's more.
 We don't need to immediately extract the values out once we've gotten an Either object back from a function. We can do more operations on the Either object without knowing its internal state. This is similar to how we can do operations the content of lists without knowing if the list is empty or how many items it contains.
 ```csharp
 Either<Exception, int> exceptionOrInt = SomeFunction();
-Either<Exception, string> exceptionOrString = exceptionOrInt.Map(x => x.ToString());
+Either<Exception, string> exceptionOrString = exceptionOrInt.Select(x => x.ToString());
 ```
 Here we have transformed the `Either<Exception, int>` to `Either<Exception, string>`. Notice how we at this point don't know if the value contained in the Either is an exception or an int. It doesn't really matter as far as we're concerned here. If it was an Exception then it will still be an Exception and if it was an int it will have been turned to a string.
 
 Using the previous example of inverting numbers we can use this to do all kinds of operations on the results before we know if the function succeeded or not.
 ```csharp
 string result = Invert(7)
-    .Map(x => x + 8)
-    .Map(x => x * 19)
-    .Get(
+    .Select(x => x + 8)
+    .Select(x => x * 19)
+    .Extract(
         err => err,
         x => "Result is: " x.ToString()
     );
@@ -99,9 +99,9 @@ string result = Invert(7)
 But what if we want to call another function that can fail later down the chain? What will the result look like then? Well, rather ugly honestly.
 ```csharp
 Either<string, double> either1 = Invert(x);
-Either<string, Either<string, double>> either2 = either1.Map(Invert);
+Either<string, Either<string, double>> either2 = either1.Select(Invert);
 ```
-In order to get anything useful out of this we would have to nest the `Get` method down through all the nested levels which gets messy.
+In order to get anything useful out of this we would have to nest the `Extract` method down through all the nested levels which gets messy.
 
 Luckily, there is a way to get around this. We need a new method to handle this special case.
 ```csharp
@@ -112,14 +112,14 @@ public class Either<T, U>
 ```
 Here there are quite a lot of generic types to dig through. Firstly we have `T` and `U` which are the initial fail or success types of the Either object. Then we have a function `Func<U, Either<T, V>>` that operates on the type `U` and returns an `Either<T, V>`. This is also the return type of the `Then`.
 
-This is how we get around the nesting of Either objects. If the initial Either object was in the success state we apply the new function to it's contents and return new Either object that that produces. If the Either object is in the fail state we just return the same state again just like we did in the `Map` case.
+This is how we get around the nesting of Either objects. If the initial Either object was in the success state we apply the new function to it's contents and return new Either object that that produces. If the Either object is in the fail state we just return the same state again just like we did in the `Select` case.
 
 If we bring this new knowledge back to the example with the `Invert` function we can invert back and forth as much as we want without nesting our data types.
 
 ```csharp
 Either<string, double> inverted1 =
     Invert(x)
-    .Map(y => y - 2);
+    .Select(y => y - 2);
 
 Either<string, double> inverted2 =
     inverted1
@@ -131,9 +131,9 @@ Armed with these abstractions we can now build entire functions that handle pote
 public static Either<string, double> DoSomeMath(double x)
 {
     return Invert(x)
-        .Map(y => y - 2)
+        .Select(y => y - 2)
         .Then(Invert)
-        .Map(y => y * 2)
+        .Select(y => y * 2)
 }
 ```
-This function can fail in two places but the flow remains the same. As long as we are keeping are data inside the Either object we don't need to know or care if it has failed or not. It is all handled under the hood.
+This function can fail in two places but the flow remains the same. As long as we are keeping our data inside the Either object we don't need to know or care if it has failed or not. It is all handled under the hood.

@@ -19,9 +19,9 @@ namespace src
 
             string result =
                 Invert(x)
-                .Map(y => y - 2)
+                .Select(y => y - 2)
                 .Then(Invert)
-                .Get(
+                .Extract(
                     err => err,
                     y => "Result: " + y.ToString()
                 );
@@ -37,9 +37,9 @@ namespace src
 
             string result =
                 Invert(x)
-                .Map(y => y - 2)
+                .Select(y => y - 2)
                 .Then(Invert)
-                .Get(
+                .Extract(
                     err => err,
                     y => "Result: " + y.ToString()
                 );
@@ -56,7 +56,7 @@ namespace src
             }
 
             return Either<string, double>
-                .Return(1 / x);
+                .Succeed(1 / x);
         }
     }
 }

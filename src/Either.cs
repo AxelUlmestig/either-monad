@@ -4,7 +4,7 @@ namespace src
 {
     public abstract class Either<T, U>
     {
-        public static Either<T, U> Return(U value) =>
+        public static Either<T, U> Succeed(U value) =>
             new Right<T, U>() {
                 Value = value
             };
@@ -14,17 +14,17 @@ namespace src
                 Value = value
             };
 
-        public abstract Either<T, V> Map<V>(Func<U, V> f);
+        public abstract Either<T, V> Select<V>(Func<U, V> f);
 
         public abstract Either<T, V> Then<V>(Func<U, Either<T, V>> f);
 
-        public abstract V Get<V>(Func<T, V> f, Func<U, V> g);
+        public abstract V Extract<V>(Func<T, V> f, Func<U, V> g);
 
         private class Right<T, U> : Either<T, U>
         {
             public U Value;
 
-            public override Either<T, V> Map<V>(Func<U, V> f) =>
+            public override Either<T, V> Select<V>(Func<U, V> f) =>
                 new Right<T, V>() {
                     Value = f(Value)
                 };
@@ -32,7 +32,7 @@ namespace src
             public override Either<T, V> Then<V>(Func<U, Either<T, V>> f) =>
                 f(Value);
 
-            public override V Get<V>(Func<T, V> f, Func<U, V> g) =>
+            public override V Extract<V>(Func<T, V> f, Func<U, V> g) =>
                 g(Value);
 
         }
@@ -41,7 +41,7 @@ namespace src
         {
             public T Value;
 
-            public override Either<T, V> Map<V>(Func<U, V> f) =>
+            public override Either<T, V> Select<V>(Func<U, V> f) =>
                 new Left<T, V>() {
                     Value = Value
                 };
@@ -51,7 +51,7 @@ namespace src
                     Value = Value
                 };
 
-            public override V Get<V>(Func<T, V> f, Func<U, V> g) =>
+            public override V Extract<V>(Func<T, V> f, Func<U, V> g) =>
                 f(Value);
 
         }
